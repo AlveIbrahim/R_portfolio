@@ -24,12 +24,9 @@ const ArtboardCanvas: React.FC = () => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const [isMounted, setIsMounted] = useState(false);
-  const [blinkMap, setBlinkMap] = useState<boolean[]>([]);
 
   useEffect(() => {
     setIsMounted(true);
-    const text = "the canvas™";
-    setBlinkMap(text.split('').map(() => Math.random() > 0.8));
 
     const updateDimensions = () => {
       setDimensions({ width: window.innerWidth, height: window.innerHeight });
@@ -43,8 +40,8 @@ const ArtboardCanvas: React.FC = () => {
   const gridItems = useMemo(() => {
     if (dimensions.width === 0) return [];
     
-    const cellW = 400;
-    const cellH = 500;
+    const cellW = 500;
+    const cellH = 650;
     const centerX = dimensions.width / 2;
     const centerY = dimensions.height / 2;
 
@@ -167,8 +164,8 @@ const ArtboardCanvas: React.FC = () => {
                 style={{
                   left: `${dimensions.width / 2 + item.x}px`,
                   top: `${dimensions.height / 2 + item.y}px`,
-                  width: '320px',
-                  height: '400px',
+                    width: '480px',
+                    height: '630px',
                 }}
                 onMouseEnter={() => setHoveredIndex(item.id)}
                 onMouseLeave={() => setHoveredIndex(null)}
@@ -235,16 +232,6 @@ const ArtboardCanvas: React.FC = () => {
         </div>
       </div>
 
-      {/* Fixed Large Background Text */}
-      <div className="absolute inset-0 z-20 pointer-events-none select-none flex items-center justify-center">
-        <h1 className="font-array text-[8vw] leading-none text-white/5 flex gap-[0.2em]">
-          {"the canvas™".split('').map((char, i) => (
-            <span key={i} className={blinkMap[i] ? "animate-blink opacity-50" : ""}>
-              {char === ' ' ? '\u00A0' : char}
-            </span>
-          ))}
-        </h1>
-      </div>
     </div>
   );
 };
