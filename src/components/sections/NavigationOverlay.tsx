@@ -6,11 +6,15 @@ import Link from "next/link";
 const NavigationOverlay = () => {
   const [time, setTime] = useState("");
 
+  // Fix hydration mismatch by only rendering time on client
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     const updateTime = () => {
       const now = new Date();
       const options: Intl.DateTimeFormatOptions = {
-        timeZone: "Europe/Rome",
+        timeZone: "Asia/Dhaka",
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
@@ -31,17 +35,17 @@ const NavigationOverlay = () => {
       <nav className="grid-layout w-full pointer-events-auto bg-transparent">
         {/* Column 1: Location & Clock */}
         <div className="grid-col flex flex-col justify-between min-h-[100px]">
-          <div className="text-ui leading-tight">
-            Based in Italy,<br />working globally.
+          <div className="text-ui leading-tight text-white font-bold" style={{ color: 'white', fontWeight: 'bold' }}>
+            Based in BD,<br />working globally.
           </div>
           <div className="text-ui font-mono mt-auto">
-            {time || "00:00:00"} GMT+1
+            {mounted ? time : "00:00:00"} GMT+6
           </div>
         </div>
 
         {/* Column 2: Expertise */}
         <div className="grid-col flex flex-col min-h-[100px]">
-          <div className="text-ui mb-4">(my.expertise)</div>
+          <div className="text-ui mb-4 text-white font-bold" style={{ color: 'white', fontWeight: 'bold' }}>(my.expertise)</div>
           <div className="flex flex-col gap-1">
             <span className="text-ui text-white">Art Direction</span>
             <span className="text-ui text-white">Web Design + Dev</span>
@@ -51,16 +55,8 @@ const NavigationOverlay = () => {
 
         {/* Column 3: Social Contacts */}
         <div className="grid-col flex flex-col min-h-[100px]">
-          <div className="text-ui mb-4">(social.contacts)</div>
+          <div className="text-ui mb-4 text-white font-bold" style={{ color: 'white', fontWeight: 'bold' }}>(social.contacts)</div>
           <div className="flex flex-col gap-1">
-            <a 
-              href="https://www.awwwards.com/nicolaromei/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-ui text-white hover:opacity-60 transition-opacity underline decoration-[#666666] underline-offset-4"
-            >
-              Awwwards
-            </a>
             <a 
               href="https://www.linkedin.com/in/nicolaromei/" 
               target="_blank" 
@@ -81,7 +77,7 @@ const NavigationOverlay = () => {
         {/* Column 4: Hero Description (Intro Text) */}
         <div className="grid-col col-span-1 flex flex-col min-h-[100px]">
           <div className="max-w-[320px]">
-            <p className="text-ui text-white lowercase leading-[1.4] tracking-normal">
+            <p className="text-ui text-white font-bold lowercase leading-[1.4] tracking-normal" style={{ color: 'white', fontWeight: 'bold' }}>
               Digital Experience Designer and Awwwards Judge. I create immersive websites defined by strong visual direction, refined motion, and a distinct design signature.
             </p>
           </div>
@@ -136,8 +132,13 @@ const NavigationOverlay = () => {
           .grid-layout {
             grid-template-columns: 1fr 1fr;
           }
-          .grid-col:nth-child(n+3) {
+          .grid-col:nth-child(2),
+          .grid-col:nth-child(3),
+          .grid-col:nth-child(4) {
             display: none;
+          }
+          .grid-col:nth-child(5) {
+            display: flex;
           }
         }
       `}</style>
