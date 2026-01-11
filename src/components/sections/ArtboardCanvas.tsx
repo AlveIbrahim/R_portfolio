@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
-import Image from 'next/image';
 
 const ASSETS = [
   "https://cdn.prod.website-files.com/6928a719958d854622ebb56e/6952ae8502127800ad2dc8f8_retromob.avif",
@@ -18,14 +17,23 @@ const ASSETS = [
 const ArtboardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const itemsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Performance Optimization: Use refs for high-frequency updates (60fps)
+  // This avoids React re-renders during drag operations
+  const offsetRef = useRef({ x: 0, y: 0 });
   const lastMousePos = useRef({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+
+  // Coarse-grained state for virtualization (only updates when grid items need to change)
+  const [visibleBounds, setVisibleBounds] = useState({ minC: 0, maxC: 0, minR: 0, maxR: 0 });
+  const lastBoundsRef = useRef({ minC: 0, maxC: 0, minR: 0, maxR: 0 });
+  
   const [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isMobile, setIsMobile] = useState(false);
-
   const [isMounted, setIsMounted] = useState(false);
+  const [fps, setFps] = useState(60);
 
   useEffect(() => {
     setIsMounted(true);
@@ -40,20 +48,14 @@ const ArtboardCanvas: React.FC = () => {
   }, []);
 
   // Dynamically calculate visible grid items for infinite feel
+  // Optimized to only re-calculate when visibleBounds change (coarse updates)
   const gridItems = useMemo(() => {
     if (dimensions.width === 0) return [];
     
     const cellW = isMobile ? 200 : 500;
     const cellH = isMobile ? 260 : 650;
-    const centerX = dimensions.width / 2;
-    const centerY = dimensions.height / 2;
-
-    // Buffer to prevent popping
-    const buffer = 1;
-    const minC = Math.floor((-offset.x - centerX) / cellW) - buffer;
-    const maxC = Math.ceil((dimensions.width - offset.x - centerX) / cellW) + buffer;
-    const minR = Math.floor((-offset.y - centerY) / cellH) - buffer;
-    const maxR = Math.ceil((dimensions.height - offset.y - centerY) / cellH) + buffer;
+    
+    const { minC, maxC, minR, maxR } = visibleBounds;
 
     const items = [];
     for (let r = minR; r <= maxR; r++) {
@@ -69,97 +71,159 @@ const ArtboardCanvas: React.FC = () => {
       }
     }
     return items;
-  }, [offset, dimensions, isMobile]);
+  }, [visibleBounds, dimensions, isMobile]);
 
   const imageWidth = isMobile ? 180 : 480;
   const imageHeight = isMobile ? 240 : 630;
 
-  // Touch event handlers for mobile
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 1) {
-      setIsDragging(true);
-      lastMousePos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  // Unified Move Handler (Touch + Mouse)
+  const handleMove = useCallback((clientX: number, clientY: number) => {
+    if (!isDraggingRef.current) return;
+    
+    const dx = clientX - lastMousePos.current.x;
+    const dy = clientY - lastMousePos.current.y;
+    
+    // Update ref directly - no re-render
+    offsetRef.current.x += dx;
+    offsetRef.current.y += dy;
+    
+    lastMousePos.current = { x: clientX, y: clientY };
+  }, []);
+
+  const handleStart = useCallback((clientX: number, clientY: number) => {
+    isDraggingRef.current = true;
+    lastMousePos.current = { x: clientX, y: clientY };
+    if (itemsContainerRef.current) {
+        itemsContainerRef.current.style.transition = 'none';
     }
   }, []);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    e.preventDefault();
-    const dx = e.touches[0].clientX - lastMousePos.current.x;
-    const dy = e.touches[0].clientY - lastMousePos.current.y;
-    setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-    lastMousePos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }, [isDragging]);
-
-  const handleTouchEnd = useCallback(() => {
-    setIsDragging(false);
+  const handleEnd = useCallback(() => {
+    isDraggingRef.current = false;
+    if (itemsContainerRef.current) {
+        // Optional: Add momentum or snap back logic here
+        // For now, restore transition for smooth programmatic moves if any
+        itemsContainerRef.current.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+    }
   }, []);
 
+  // Touch event handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      handleStart(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, [handleStart]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDraggingRef.current || e.touches.length !== 1) return;
+    // e.preventDefault(); // Moved to passive: false in effect if needed, but React handles this.
+    handleMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, [handleMove]);
+
+  // Mouse event handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    handleStart(e.clientX, e.clientY);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    handleMove(e.clientX, e.clientY);
+  };
+
+  // Main Render Loop (Canvas + DOM Transform + Virtualization Check)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency if possible
     if (!ctx) return;
 
     let animationFrameId: number;
+    let lastTime = performance.now();
+    let frameCount = 0;
 
-    const render = () => {
+    const render = (time: number) => {
+      // FPS Monitoring
+      frameCount++;
+      if (time - lastTime >= 1000) {
+        setFps(frameCount);
+        frameCount = 0;
+        lastTime = time;
+      }
+
+      // 1. Sync Canvas Size
       if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
       }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 2. Clear & Draw Background
+      // Use offsetRef.current directly
+      const offset = offsetRef.current;
+      
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Grid Lines (Background)
+      // 3. Draw Grid Lines
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
       ctx.lineWidth = 1;
 
       const gridSize = 100;
-      const startX = (offset.x % gridSize) - gridSize;
+      // Use modulus with positive result adjustment
+      const startX = (offset.x % gridSize) - gridSize; 
       const startY = (offset.y % gridSize) - gridSize;
 
-      for (let x = startX; x < canvas.width + gridSize; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
+      // Vertical lines
+      // Optimize loop bounds
+      const w = canvas.width;
+      const h = canvas.height;
+      
+      ctx.beginPath();
+      for (let x = startX; x < w + gridSize; x += gridSize) {
+        ctx.moveTo(Math.floor(x) + 0.5, 0); // Pixel perfect lines
+        ctx.lineTo(Math.floor(x) + 0.5, h);
+      }
+      ctx.stroke();
+
+      // Horizontal lines
+      ctx.beginPath();
+      for (let y = startY; y < h + gridSize; y += gridSize) {
+        ctx.moveTo(0, Math.floor(y) + 0.5);
+        ctx.lineTo(w, Math.floor(y) + 0.5);
+      }
+      ctx.stroke();
+
+      // 4. Update Container Transform (Direct DOM Manipulation)
+      if (itemsContainerRef.current) {
+        // Use translate3d for GPU acceleration
+        itemsContainerRef.current.style.transform = `translate3d(${offset.x}px, ${offset.y}px, 0)`;
       }
 
-      for (let y = startY; y < canvas.height + gridSize; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
+      // 5. Virtualization Logic (Coarse-grained)
+      // Only trigger React state update if grid bounds change
+      const cellW = isMobile ? 200 : 500; // Note: isMobile closure might be stale if resize happens? 
+      // isMobile is in dependency array, so this effect restarts on resize. Correct.
+      const cellH = isMobile ? 260 : 650;
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const buffer = 1;
+
+      const newMinC = Math.floor((-offset.x - centerX) / cellW) - buffer;
+      const newMaxC = Math.ceil((window.innerWidth - offset.x - centerX) / cellW) + buffer;
+      const newMinR = Math.floor((-offset.y - centerY) / cellH) - buffer;
+      const newMaxR = Math.ceil((window.innerHeight - offset.y - centerY) / cellH) + buffer;
+
+      const lb = lastBoundsRef.current;
+      if (newMinC !== lb.minC || newMaxC !== lb.maxC || newMinR !== lb.minR || newMaxR !== lb.maxR) {
+        lastBoundsRef.current = { minC: newMinC, maxC: newMaxC, minR: newMinR, maxR: newMaxR };
+        setVisibleBounds({ minC: newMinC, maxC: newMaxC, minR: newMinR, maxR: newMaxR });
       }
 
       animationFrameId = requestAnimationFrame(render);
     };
 
-    render();
+    render(performance.now());
     return () => cancelAnimationFrame(animationFrameId);
-  }, [offset]);
-
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    lastMousePos.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    const dx = e.clientX - lastMousePos.current.x;
-    const dy = e.clientY - lastMousePos.current.y;
-    setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-    lastMousePos.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  }, [isMobile]); // Restart loop if layout config changes
 
   return (
     <div 
@@ -167,11 +231,11 @@ const ArtboardCanvas: React.FC = () => {
       className="relative w-full h-screen overflow-hidden bg-[#0a0a0a] cursor-grab active:cursor-grabbing select-none touch-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseUp={handleEnd}
+      onMouseLeave={handleEnd}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onTouchEnd={handleEnd}
     >
       {/* WebGL Emulated Background */}
       <canvas 
@@ -181,10 +245,12 @@ const ArtboardCanvas: React.FC = () => {
 
       {/* Interactive Item Overlay */}
       <div 
-        className="absolute inset-0 z-10"
+        ref={itemsContainerRef}
+        className="absolute inset-0 z-10 will-change-transform" // Hint to browser
         style={{
-          transform: `translate(${offset.x}px, ${offset.y}px)`,
-          transition: isDragging ? 'none' : 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)'
+           // Initial transform set by ref, but we can set initial style here too
+           transform: 'translate3d(0px, 0px, 0)',
+           // Transition handled in JS logic or kept minimal
         }}
       >
           <div className="relative w-full h-full">
@@ -193,10 +259,14 @@ const ArtboardCanvas: React.FC = () => {
                   key={item.id}
                   className="absolute group overflow-hidden border border-white/5 bg-neutral-900"
                   style={{
+                    // Use translate3d for item positioning too if possible, but top/left is fine for static layout within container
                     left: `${dimensions.width / 2 + item.x}px`,
                     top: `${dimensions.height / 2 + item.y}px`,
                     width: `${imageWidth}px`,
                     height: `${imageHeight}px`,
+                    // Optimization: Content visibility
+                    contentVisibility: 'auto',
+                    contain: 'paint layout'
                   }}
                   onMouseEnter={() => setHoveredIndex(item.id)}
                   onMouseLeave={() => setHoveredIndex(null)}
@@ -205,10 +275,14 @@ const ArtboardCanvas: React.FC = () => {
                   <img
                     src={item.src}
                     alt="Project Item"
+                    loading="eager" // Load visible items eagerly
                     className={`w-full h-full object-cover transition-all duration-700 ease-in-out scale-105 group-hover:scale-100 ${
                       hoveredIndex === item.id ? 'grayscale-0' : 'grayscale'
                     }`}
                     draggable={false}
+                    style={{
+                      willChange: 'filter, transform' // Optimize hover effect
+                    }}
                   />
                   {/* CRT Screen Scanlines for individual items */}
                   <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.04),rgba(0,0,255,0.06))] bg-[length:100%_2px,2px_100%]" />
@@ -255,7 +329,7 @@ const ArtboardCanvas: React.FC = () => {
         <div className="flex flex-col gap-2">
             <div className="text-ui opacity-60 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-              LIVE CANVAS
+              LIVE CANVAS {process.env.NODE_ENV === 'development' && <span className="text-xs ml-2">FPS: {fps}</span>}
             </div>
           <p className="text-ui max-w-[300px] md:max-w-[300px] max-w-[200px] leading-relaxed text-[9px] md:text-[11px]">
             SCROLL / DRAG TO INTERACT W/ THE CANVAS™
