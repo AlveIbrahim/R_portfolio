@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 
 const ASSETS = [
@@ -17,11 +17,13 @@ const ASSETS = [
 
 const ArtboardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
   const [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [isMobile, setIsMobile] = useState(false);
 
   const [isMounted, setIsMounted] = useState(false);
 
@@ -30,6 +32,7 @@ const ArtboardCanvas: React.FC = () => {
 
     const updateDimensions = () => {
       setDimensions({ width: window.innerWidth, height: window.innerHeight });
+      setIsMobile(window.innerWidth < 768);
     };
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
@@ -40,8 +43,8 @@ const ArtboardCanvas: React.FC = () => {
   const gridItems = useMemo(() => {
     if (dimensions.width === 0) return [];
     
-    const cellW = 500;
-    const cellH = 650;
+    const cellW = isMobile ? 200 : 500;
+    const cellH = isMobile ? 260 : 650;
     const centerX = dimensions.width / 2;
     const centerY = dimensions.height / 2;
 
@@ -66,7 +69,31 @@ const ArtboardCanvas: React.FC = () => {
       }
     }
     return items;
-  }, [offset, dimensions]);
+  }, [offset, dimensions, isMobile]);
+
+  const imageWidth = isMobile ? 180 : 480;
+  const imageHeight = isMobile ? 240 : 630;
+
+  // Touch event handlers for mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      lastMousePos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    const dx = e.touches[0].clientX - lastMousePos.current.x;
+    const dy = e.touches[0].clientY - lastMousePos.current.y;
+    setOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+    lastMousePos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, [isDragging]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -136,11 +163,15 @@ const ArtboardCanvas: React.FC = () => {
 
   return (
     <div 
-      className="relative w-full h-screen overflow-hidden bg-[#0a0a0a] cursor-grab active:cursor-grabbing select-none"
+      ref={containerRef}
+      className="relative w-full h-screen overflow-hidden bg-[#0a0a0a] cursor-grab active:cursor-grabbing select-none touch-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {/* WebGL Emulated Background */}
       <canvas 
@@ -157,19 +188,19 @@ const ArtboardCanvas: React.FC = () => {
         }}
       >
           <div className="relative w-full h-full">
-            {gridItems.map((item) => (
-              <div
-                key={item.id}
-                className="absolute group overflow-hidden border border-white/5 bg-neutral-900"
-                style={{
-                  left: `${dimensions.width / 2 + item.x}px`,
-                  top: `${dimensions.height / 2 + item.y}px`,
-                    width: '480px',
-                    height: '630px',
-                }}
-                onMouseEnter={() => setHoveredIndex(item.id)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              >
+              {gridItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="absolute group overflow-hidden border border-white/5 bg-neutral-900"
+                  style={{
+                    left: `${dimensions.width / 2 + item.x}px`,
+                    top: `${dimensions.height / 2 + item.y}px`,
+                    width: `${imageWidth}px`,
+                    height: `${imageHeight}px`,
+                  }}
+                  onMouseEnter={() => setHoveredIndex(item.id)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                >
                 <div className="relative w-full h-full overflow-hidden">
                   <img
                     src={item.src}
@@ -220,13 +251,13 @@ const ArtboardCanvas: React.FC = () => {
       </div>
 
       {/* HUD Information Overlay */}
-      <div className="absolute bottom-[5vh] left-[5vh] z-50 pointer-events-none">
+      <div className="absolute bottom-[5vh] left-[5vh] md:left-[5vh] left-[3vh] z-50 pointer-events-none">
         <div className="flex flex-col gap-2">
             <div className="text-ui opacity-60 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
               LIVE CANVAS
             </div>
-          <p className="text-ui max-w-[300px] leading-relaxed">
+          <p className="text-ui max-w-[300px] md:max-w-[300px] max-w-[200px] leading-relaxed text-[9px] md:text-[11px]">
             SCROLL / DRAG TO INTERACT W/ THE CANVAS™
           </p>
         </div>
