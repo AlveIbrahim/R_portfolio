@@ -225,10 +225,10 @@ const ArtboardCanvas: React.FC = () => {
       {/* HUD Information Overlay */}
       <div className="absolute bottom-[5vh] left-[5vh] z-50 pointer-events-none">
         <div className="flex flex-col gap-2">
-          <div className="text-ui opacity-60 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            LIVE CANVAS
-          </div>
+            <div className="text-ui opacity-60 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+              LIVE CANVAS
+            </div>
           <p className="text-ui max-w-[300px] leading-relaxed">
             SCROLL / DRAG TO INTERACT W/ THE CANVAS™
           </p>
