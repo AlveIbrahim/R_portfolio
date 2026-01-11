@@ -3,8 +3,8 @@ import "./globals.css";
 import { VisualEditsMessenger } from "orchids-visual-edits";
 
 export const metadata: Metadata = {
-  title: "Nicola Romei | The Artboard",
-  description: "Digital Experience Designer and Awwwards Judge. I create immersive websites defined by strong visual direction, refined motion, and a distinct design signature.",
+  title: "Yoo | The Canvas",
+  description: "I dunno what i do!!!.",
 };
 
 export default function RootLayout({

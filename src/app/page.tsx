@@ -4,7 +4,6 @@ import Preloader from "@/components/sections/preloader";
 import NavigationOverlay from "@/components/sections/NavigationOverlay";
 import ArtboardCanvas from "@/components/sections/ArtboardCanvas";
 import InfoTab from "@/components/sections/InfoTab";
-import FooterBranding from "@/components/sections/FooterBranding";
 
 export default function Home() {
   return (
@@ -20,9 +19,6 @@ export default function Home() {
 
       {/* Floating Info Section */}
       <InfoTab />
-
-      {/* Signature Branding Footer */}
-      <FooterBranding />
     </main>
   );
 }

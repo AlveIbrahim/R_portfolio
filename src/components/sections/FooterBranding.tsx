@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 const FooterBranding = () => {
-  const brandText = "the artboard™";
+  const brandText = "the canvas™";
   const [delays, setDelays] = useState<string[]>([]);
 
   useEffect(() => {

@@ -28,7 +28,7 @@ const ArtboardCanvas: React.FC = () => {
 
   useEffect(() => {
     setIsMounted(true);
-    const text = "the artboard™";
+    const text = "the canvas™";
     setBlinkMap(text.split('').map(() => Math.random() > 0.8));
 
     const updateDimensions = () => {
@@ -227,18 +227,18 @@ const ArtboardCanvas: React.FC = () => {
         <div className="flex flex-col gap-2">
           <div className="text-ui opacity-60 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            LIVE ARTBOARD_SESSION
+            LIVE CANVAS
           </div>
           <p className="text-ui max-w-[300px] leading-relaxed">
-            SCROLL / DRAG TO INTERACT W/ THE ARTBOARD™
+            SCROLL / DRAG TO INTERACT W/ THE CANVAS™
           </p>
         </div>
       </div>
 
       {/* Fixed Large Background Text */}
-      <div className="absolute bottom-10 right-10 z-20 pointer-events-none select-none">
+      <div className="absolute inset-0 z-20 pointer-events-none select-none flex items-center justify-center">
         <h1 className="font-array text-[8vw] leading-none text-white/5 flex gap-[0.2em]">
-          {"the artboard™".split('').map((char, i) => (
+          {"the canvas™".split('').map((char, i) => (
             <span key={i} className={blinkMap[i] ? "animate-blink opacity-50" : ""}>
               {char === ' ' ? '\u00A0' : char}
             </span>
