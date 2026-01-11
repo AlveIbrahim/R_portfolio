@@ -22,6 +22,15 @@ const ArtboardCanvas: React.FC = () => {
   const lastMousePos = useRef({ x: 0, y: 0 });
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+  const [isMounted, setIsMounted] = useState(false);
+  const [blinkMap, setBlinkMap] = useState<boolean[]>([]);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const text = "the artboard™";
+    setBlinkMap(text.split('').map(() => Math.random() > 0.8));
+  }, []);
+
   // Generate a larger grid of images for infinite-like feel
   const gridItems = useMemo(() => {
     const items = [];
@@ -208,7 +217,7 @@ const ArtboardCanvas: React.FC = () => {
       <div className="absolute bottom-10 right-10 z-20 pointer-events-none select-none">
         <h1 className="font-array text-[8vw] leading-none text-white/5 flex gap-[0.2em]">
           {"the artboard™".split('').map((char, i) => (
-            <span key={i} className={Math.random() > 0.8 ? "animate-blink opacity-50" : ""}>
+            <span key={i} className={blinkMap[i] ? "animate-blink opacity-50" : ""}>
               {char === ' ' ? '\u00A0' : char}
             </span>
           ))}

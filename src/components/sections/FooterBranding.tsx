@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 const FooterBranding = () => {
   const brandText = "the artboard™";
+  const [delays, setDelays] = useState<string[]>([]);
+
+  useEffect(() => {
+    setDelays(brandText.split('').map(() => `${Math.random() * 2}s`));
+  }, []);
 
   return (
     <footer className="relative w-full overflow-hidden bg-transparent pointer-events-none select-none">
@@ -17,18 +22,18 @@ const FooterBranding = () => {
               data-blink-text="" 
               className="font-display text-[12vw] sm:text-[10vw] font-extrabold uppercase leading-[0.85] tracking-tighter text-white"
             >
-              {brandText.split('').map((char, index) => (
-                <span 
-                  key={index} 
-                  className="blink-char inline-block"
-                  style={{ 
-                    animation: `blink 1.5s step-end infinite`,
-                    animationDelay: `${Math.random() * 2}s`
-                  }}
-                >
-                  {char === ' ' ? '\u00A0' : char}
-                </span>
-              ))}
+                {brandText.split('').map((char, index) => (
+                  <span 
+                    key={index} 
+                    className="blink-char inline-block"
+                    style={{ 
+                      animation: `blink 1.5s step-end infinite`,
+                      animationDelay: delays[index] || '0s'
+                    }}
+                  >
+                    {char === ' ' ? '\u00A0' : char}
+                  </span>
+                ))}
             </h1>
           </div>
         </div>
