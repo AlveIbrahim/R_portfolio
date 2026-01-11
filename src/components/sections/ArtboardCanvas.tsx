@@ -20,7 +20,8 @@ const ArtboardCanvas: React.FC = () => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const lastMousePos = useRef({ x: 0, y: 0 });
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<string | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const [isMounted, setIsMounted] = useState(false);
   const [blinkMap, setBlinkMap] = useState<boolean[]>([]);
@@ -29,26 +30,46 @@ const ArtboardCanvas: React.FC = () => {
     setIsMounted(true);
     const text = "the artboard™";
     setBlinkMap(text.split('').map(() => Math.random() > 0.8));
+
+    const updateDimensions = () => {
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    };
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Generate a larger grid of images for infinite-like feel
+  // Dynamically calculate visible grid items for infinite feel
   const gridItems = useMemo(() => {
+    if (dimensions.width === 0) return [];
+    
+    const cellW = 400;
+    const cellH = 500;
+    const centerX = dimensions.width / 2;
+    const centerY = dimensions.height / 2;
+
+    // Buffer to prevent popping
+    const buffer = 1;
+    const minC = Math.floor((-offset.x - centerX) / cellW) - buffer;
+    const maxC = Math.ceil((dimensions.width - offset.x - centerX) / cellW) + buffer;
+    const minR = Math.floor((-offset.y - centerY) / cellH) - buffer;
+    const maxR = Math.ceil((dimensions.height - offset.y - centerY) / cellH) + buffer;
+
     const items = [];
-    const cols = 5;
-    const rows = 5;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const assetIndex = (r * cols + c) % ASSETS.length;
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        // Deterministic asset selection based on grid coordinates
+        const assetIndex = Math.abs((r * 7 + c * 13) % ASSETS.length);
         items.push({
           id: `${r}-${c}`,
           src: ASSETS[assetIndex],
-          x: c * 400 - 800,
-          y: r * 500 - 1000,
+          x: c * cellW,
+          y: r * cellH,
         });
       }
     }
     return items;
-  }, []);
+  }, [offset, dimensions]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,8 +81,10 @@ const ArtboardCanvas: React.FC = () => {
     let animationFrameId: number;
 
     const render = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#0a0a0a';
@@ -89,15 +112,13 @@ const ArtboardCanvas: React.FC = () => {
         ctx.stroke();
       }
 
-      // We handle actual image drawing via DOM elements for pixel-perfect filter control 
-      // as per design requirements (grayscale filter/interactivity).
-      // The canvas here serves as the WebGL-esque background & grid coordinator.
       animationFrameId = requestAnimationFrame(render);
     };
 
     render();
     return () => cancelAnimationFrame(animationFrameId);
   }, [offset]);
+
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -138,35 +159,36 @@ const ArtboardCanvas: React.FC = () => {
           transition: isDragging ? 'none' : 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)'
         }}
       >
-        <div className="relative w-full h-full">
-          {gridItems.map((item, idx) => (
-            <div
-              key={item.id}
-              className="absolute group overflow-hidden border border-white/5 bg-neutral-900"
-              style={{
-                left: `${canvasRef.current ? canvasRef.current.width / 2 + item.x : item.x}px`,
-                top: `${canvasRef.current ? canvasRef.current.height / 2 + item.y : item.y}px`,
-                width: '320px',
-                height: '400px',
-              }}
-              onMouseEnter={() => setHoveredIndex(idx)}
-              onMouseLeave={() => setHoveredIndex(null)}
-            >
-              <div className="relative w-full h-full overflow-hidden">
-                <img
-                  src={item.src}
-                  alt="Project Item"
-                  className={`w-full h-full object-cover transition-all duration-700 ease-in-out scale-105 group-hover:scale-100 ${
-                    hoveredIndex === idx ? 'grayscale-0' : 'grayscale'
-                  }`}
-                  draggable={false}
-                />
-                {/* CRT Screen Scanlines for individual items */}
-                <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.04),rgba(0,0,255,0.06))] bg-[length:100%_2px,2px_100%]" />
+          <div className="relative w-full h-full">
+            {gridItems.map((item) => (
+              <div
+                key={item.id}
+                className="absolute group overflow-hidden border border-white/5 bg-neutral-900"
+                style={{
+                  left: `${dimensions.width / 2 + item.x}px`,
+                  top: `${dimensions.height / 2 + item.y}px`,
+                  width: '320px',
+                  height: '400px',
+                }}
+                onMouseEnter={() => setHoveredIndex(item.id)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
+                <div className="relative w-full h-full overflow-hidden">
+                  <img
+                    src={item.src}
+                    alt="Project Item"
+                    className={`w-full h-full object-cover transition-all duration-700 ease-in-out scale-105 group-hover:scale-100 ${
+                      hoveredIndex === item.id ? 'grayscale-0' : 'grayscale'
+                    }`}
+                    draggable={false}
+                  />
+                  {/* CRT Screen Scanlines for individual items */}
+                  <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.04),rgba(0,0,255,0.06))] bg-[length:100%_2px,2px_100%]" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+
       </div>
 
       {/* CRT Master Overlay */}
