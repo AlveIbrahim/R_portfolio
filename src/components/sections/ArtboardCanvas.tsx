@@ -34,6 +34,9 @@ const ArtboardCanvas: React.FC = () => {
   const lastMoveTime = useRef(performance.now());
   const FRICTION = 0.92; // Deceleration factor (lower = faster stop)
   const MIN_VELOCITY = 0.1; // Stop when velocity drops below this
+  
+  // Scroll wheel sensitivity
+  const SCROLL_MULTIPLIER = 1.5;
 
   // Coarse-grained state for virtualization (only updates when grid items need to change)
   const [visibleBounds, setVisibleBounds] = useState({ minC: 0, maxC: 0, minR: 0, maxR: 0 });
@@ -127,6 +130,31 @@ const ArtboardCanvas: React.FC = () => {
     isDraggingRef.current = false;
     // Inertia continues in render loop - no transition needed
   }, []);
+
+  // Scroll wheel handler - scroll down = drag up (negative Y), scroll up = drag down (positive Y)
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault();
+    
+    // deltaY > 0 means scroll down, which should move content up (like dragging up)
+    // So we subtract deltaY to get the inverse behavior
+    offsetRef.current.y -= e.deltaY * SCROLL_MULTIPLIER;
+    
+    // Also handle horizontal scroll (shift+scroll or trackpad)
+    offsetRef.current.x -= e.deltaX * SCROLL_MULTIPLIER;
+    
+    // Add velocity for smooth inertia after scroll
+    velocityRef.current.y = -e.deltaY * 0.3;
+    velocityRef.current.x = -e.deltaX * 0.3;
+  }, []);
+
+  // Add wheel event listener with passive: false to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
 
   // Touch event handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
