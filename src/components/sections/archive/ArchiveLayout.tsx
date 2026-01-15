@@ -93,15 +93,15 @@ const ArchiveLayout = () => {
       </div>
 
       {/* Navigation / Header */}
-      <div className="fixed top-0 left-0 w-full p-8 flex justify-between items-start z-50 text-[11px] uppercase tracking-wider mix-blend-difference md:mix-blend-normal text-black md:text-inherit">
+      <div className="fixed top-0 left-0 w-full p-8 flex justify-between items-start z-50 text-[11px] uppercase tracking-wider">
         <Link href="/" className="group relative">
-          <span className="font-bold">BACK TO ARTBOARD™</span>
+          <span className="font-bold">BACK TO CANVAS™</span>
           <span className="absolute -bottom-1 left-0 w-full h-[1px] bg-black scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
         </Link>
 
         <div className="text-right max-w-[300px] hidden md:block opacity-60">
-          WHAT APPEARS HERE IS NOT A SEQUENCE OF OUTCOMES, BUT A RECORD OF DECISIONS.
-          DIFFERENT CONTEXTS, DIFFERENT CONSTRAINTS, THE SAME INSISTENCE ON CLARITY, STRUCTURE, AND PRESENCE.
+          THIS ISN’T A TIMELINE OF WORK, BUT A CATALOG OF INTENTIONS.
+          CONTEXTS SHIFT, MATERIALS CHANGE THE COMMITMENT TO SPACE, LIGHT, AND CLARITY REMAINS.
         </div>
         
         {/* Mobile Header Right Side (Optional, based on screenshot showing THE PROFILE?) */}
@@ -110,7 +110,7 @@ const ArchiveLayout = () => {
         </div>
       </div>
 
-      <div className="fixed top-12 left-8 text-[11px] opacity-60 z-50 mix-blend-difference md:mix-blend-normal text-black md:text-inherit">
+      <div className="fixed top-12 left-8 text-[11px] opacity-60 z-50">
         {mounted ? time : "00:00:00"} GMT+6
       </div>
 
