@@ -48,8 +48,8 @@ const NavigationOverlay = () => {
           <div className="text-ui mb-4 text-white font-bold" style={{ color: 'white', fontWeight: 'bold' }}>(my.expertise)</div>
           <div className="flex flex-col gap-1">
             <span className="text-ui text-white">Art Direction</span>
-            <span className="text-ui text-white">Web Design + Dev</span>
-            <span className="text-ui text-white">Webflow Development</span>
+            <span className="text-ui text-white">Architect</span>
+            <span className="text-ui text-white">Photographer</span>
           </div>
         </div>
 
@@ -58,7 +58,7 @@ const NavigationOverlay = () => {
           <div className="text-ui mb-4 text-white font-bold" style={{ color: 'white', fontWeight: 'bold' }}>(social.contacts)</div>
           <div className="flex flex-col gap-1">
             <a 
-              href="https://www.linkedin.com/in/nicolaromei/" 
+              href="....." 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-ui text-white hover:opacity-60 transition-opacity underline decoration-[#666666] underline-offset-4"
@@ -78,7 +78,7 @@ const NavigationOverlay = () => {
         <div className="grid-col col-span-1 flex flex-col min-h-[100px]">
           <div className="max-w-[320px]">
             <p className="text-ui text-white font-bold lowercase leading-[1.4] tracking-normal" style={{ color: 'white', fontWeight: 'bold' }}>
-              Digital Experience Designer and Awwwards Judge. I create immersive websites defined by strong visual direction, refined motion, and a distinct design signature.
+              I design environments and capture narratives through space, form, and light—where architecture meets visual storytelling.
             </p>
           </div>
         </div>
