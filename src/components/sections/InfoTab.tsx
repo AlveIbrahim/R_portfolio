@@ -46,7 +46,7 @@ export default function InfoTab() {
           {/* Description Content */}
           <div className="tab__desc p-5 pt-8 bg-[#0a0a0a]">
             <p className="paragraph text-[11px] leading-[1.6] text-white font-mono uppercase tracking-widest mb-8">
-              SCROLL / DRAG <span className="opacity-60">TO INTERACT W/ </span>THE CANVAS 
+              DRAG <span className="opacity-60">TO INTERACT W/ </span>THE CANVAS 
               <span className="italic mx-1 lowercase font-normal">or</span> 
               <span className="opacity-60"> click on the grid </span>
               to explore the archive.
