@@ -28,6 +28,12 @@ const ArtboardCanvas: React.FC = () => {
   const offsetRef = useRef({ x: 0, y: 0 });
   const lastMousePos = useRef({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
+  
+  // Inertia/momentum physics
+  const velocityRef = useRef({ x: 0, y: 0 });
+  const lastMoveTime = useRef(performance.now());
+  const FRICTION = 0.92; // Deceleration factor (lower = faster stop)
+  const MIN_VELOCITY = 0.1; // Stop when velocity drops below this
 
   // Coarse-grained state for virtualization (only updates when grid items need to change)
   const [visibleBounds, setVisibleBounds] = useState({ minC: 0, maxC: 0, minR: 0, maxR: 0 });
@@ -86,6 +92,9 @@ const ArtboardCanvas: React.FC = () => {
   const handleMove = useCallback((clientX: number, clientY: number) => {
     if (!isDraggingRef.current) return;
     
+    const now = performance.now();
+    const dt = now - lastMoveTime.current;
+    
     const dx = clientX - lastMousePos.current.x;
     const dy = clientY - lastMousePos.current.y;
     
@@ -93,12 +102,22 @@ const ArtboardCanvas: React.FC = () => {
     offsetRef.current.x += dx;
     offsetRef.current.y += dy;
     
+    // Calculate velocity for inertia (pixels per ms, scaled up)
+    if (dt > 0) {
+      velocityRef.current.x = dx / dt * 16; // Scale to ~60fps frame time
+      velocityRef.current.y = dy / dt * 16;
+    }
+    
     lastMousePos.current = { x: clientX, y: clientY };
+    lastMoveTime.current = now;
   }, []);
 
   const handleStart = useCallback((clientX: number, clientY: number) => {
     isDraggingRef.current = true;
     lastMousePos.current = { x: clientX, y: clientY };
+    lastMoveTime.current = performance.now();
+    // Stop any existing inertia when starting a new drag
+    velocityRef.current = { x: 0, y: 0 };
     if (itemsContainerRef.current) {
         itemsContainerRef.current.style.transition = 'none';
     }
@@ -106,11 +125,7 @@ const ArtboardCanvas: React.FC = () => {
 
   const handleEnd = useCallback(() => {
     isDraggingRef.current = false;
-    if (itemsContainerRef.current) {
-        // Optional: Add momentum or snap back logic here
-        // For now, restore transition for smooth programmatic moves if any
-        itemsContainerRef.current.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
-    }
+    // Inertia continues in render loop - no transition needed
   }, []);
 
   // Touch event handlers
@@ -165,6 +180,21 @@ const ArtboardCanvas: React.FC = () => {
       // 2. Clear & Draw Background
       // Use offsetRef.current directly
       const offset = offsetRef.current;
+      const velocity = velocityRef.current;
+      
+      // Apply inertia when not dragging
+      if (!isDraggingRef.current) {
+        if (Math.abs(velocity.x) > MIN_VELOCITY || Math.abs(velocity.y) > MIN_VELOCITY) {
+          offset.x += velocity.x;
+          offset.y += velocity.y;
+          velocity.x *= FRICTION;
+          velocity.y *= FRICTION;
+          
+          // Stop completely when velocity is very small
+          if (Math.abs(velocity.x) < MIN_VELOCITY) velocity.x = 0;
+          if (Math.abs(velocity.y) < MIN_VELOCITY) velocity.y = 0;
+        }
+      }
       
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
